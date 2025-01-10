@@ -45,6 +45,11 @@ def single_slide_tts_to_mp4():
         try:
             input_image = ffmpeg.input(temp_image_path, loop=1, framerate=1)
             input_audio = ffmpeg.input(temp_audio_path)
+
+            # Get the duration of the audio
+            audio_probe = ffmpeg.probe(temp_audio_path)
+            audio_duration = float(next(stream for stream in audio_probe['streams'] if stream['codec_type'] == 'audio')['duration'])
+
             ffmpeg.output(
                 input_image,
                 input_audio,
@@ -53,7 +58,8 @@ def single_slide_tts_to_mp4():
                 pix_fmt='yuv420p',
                 shortest=None,
                 acodec='aac',
-                audio_bitrate='192k'
+                audio_bitrate='192k',
+                t=audio_duration  # Trim video to match audio duration
             ).run(overwrite_output=True)
         except ffmpeg.Error as e:
             error_message = e.stderr.decode('utf-8', 'replace') if e.stderr else str(e)
