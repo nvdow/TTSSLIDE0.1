@@ -23,12 +23,12 @@ def single_slide_tts_to_mp4():
         with Image.open(uploaded_file) as img:
             if img.mode != "RGB":
                 img = img.convert("RGB")
-            
+
             width, height = img.size
             new_width = width if width % 2 == 0 else width - 1
             new_height = height if height % 2 == 0 else height - 1
             img = img.resize((new_width, new_height))
-            
+
             temp_image_path = os.path.join(tempfile.gettempdir(), "uploaded_slide.jpg")
             img.save(temp_image_path)
 
@@ -53,7 +53,8 @@ def single_slide_tts_to_mp4():
                 audio_input=ffmpeg.input(temp_audio_path)
             ).run(overwrite_output=True)
         except ffmpeg.Error as e:
-            st.error(f"Error running ffmpeg: {e.stderr.decode()}")
+            error_message = e.stderr.decode('utf-8', 'replace') if e.stderr else str(e)
+            st.error(f"Error running ffmpeg: {error_message}")
             return
 
         with open(temp_output_path, "rb") as f:
