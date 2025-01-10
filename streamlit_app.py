@@ -3,7 +3,7 @@ from gtts import gTTS
 from io import BytesIO
 import tempfile
 import os
-import subprocess
+import ffmpeg
 from PIL import Image
 
 def single_slide_tts_to_mp4():
@@ -41,27 +41,17 @@ def single_slide_tts_to_mp4():
         with open(temp_audio_path, "wb") as f:
             f.write(audio_fp.read())
 
-        output_filename = "tts_slide.mp4"
-        temp_output_path = os.path.join(tempfile.gettempdir(), output_filename)
-
-        ffmpeg_command = [
-            "ffmpeg",
-            "-y",
-            "-loop", "1",
-            "-i", temp_image_path,
-            "-i", temp_audio_path,
-            "-c:v", "libx264",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-shortest",
-            "-pix_fmt", "yuv420p",
-            temp_output_path
-        ]
-
+        temp_output_path = os.path.join(tempfile.gettempdir(), "tts_slide.mp4")
         try:
-            subprocess.run(ffmpeg_command, check=True)
-        except subprocess.CalledProcessError as e:
-            st.error(f"Error running ffmpeg: {e}")
+            (
+                ffmpeg
+                .input(temp_image_path, loop=1, framerate=1)
+                .input(temp_audio_path)
+                .output(temp_output_path, vcodec='libx264', acodec='aac', pix_fmt='yuv420p', shortest=None)
+                .run()
+            )
+        except ffmpeg.Error as e:
+            st.error(f"Error running ffmpeg: {e.stderr.decode()}")
             return
 
         with open(temp_output_path, "rb") as f:
@@ -98,34 +88,29 @@ def video_clipper_and_combiner():
         filelist_path = os.path.join(temp_dir, "filelist.txt")
         with open(filelist_path, "w") as f:
             for path in video_paths:
-                f.write(f"file '{os.path.abspath(path)}'\n")
+                f.write(f"file '{path}'\n")
 
         output_path = os.path.join(temp_dir, "combined_video.mp4")
 
-        ffmpeg_cmd = [
-            "ffmpeg",
-            "-y",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", filelist_path,
-            "-c", "copy",
-            output_path
-        ]
-
         try:
-            subprocess.run(ffmpeg_cmd, check=True)
+            (
+                ffmpeg
+                .input(filelist_path, format='concat', safe=0)
+                .output(output_path, c='copy')
+                .run()
+            )
             st.success("Videos have been combined successfully!")
 
             with open(output_path, "rb") as f:
                 st.download_button(label="Download Combined Video", data=f, file_name="final_combined_video.mp4", mime="video/mp4")
-        except subprocess.CalledProcessError as e:
+        except ffmpeg.Error as e:
             st.error("Error while combining videos:")
-            st.error(str(e))
+            st.error(e.stderr.decode())
 
 def main():
-    st.title("TTS to MP4 and Video Combiner")
+    st.title("Two-in-One Streamlit App")
 
-    app_choice = st.sidebar.selectbox("Choose a feature:", ["Single-Slide TTS to MP4", "Video Combiner"])
+    app_choice = st.sidebar.selectbox("Choose a feature:", ["Single-Slide TTS to MP4", "Video Clipper and Combiner"])
 
     if app_choice == "Single-Slide TTS to MP4":
         single_slide_tts_to_mp4()
