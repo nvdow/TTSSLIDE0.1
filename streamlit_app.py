@@ -43,14 +43,17 @@ def single_slide_tts_to_mp4():
 
         temp_output_path = os.path.join(tempfile.gettempdir(), "tts_slide.mp4")
         try:
-            ffmpeg.input(temp_image_path, loop=1, framerate=1).output(
+            input_image = ffmpeg.input(temp_image_path, loop=1, framerate=1)
+            input_audio = ffmpeg.input(temp_audio_path)
+            ffmpeg.output(
+                input_image,
+                input_audio,
                 temp_output_path,
                 vcodec='libx264',
                 pix_fmt='yuv420p',
                 shortest=None,
                 acodec='aac',
-                audio_bitrate='192k',
-                audio_input=ffmpeg.input(temp_audio_path)
+                audio_bitrate='192k'
             ).run(overwrite_output=True)
         except ffmpeg.Error as e:
             error_message = e.stderr.decode('utf-8', 'replace') if e.stderr else str(e)
